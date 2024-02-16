@@ -6,3 +6,4 @@ pub(self) mod api;
 pub use api::init;
 
 pub mod shader;
+pub mod texture;

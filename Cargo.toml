@@ -5,13 +5,14 @@ edition = "2021"
 build = "build.rs"
 
 [features]
-default = [ "gl45" ]
+default = ["gl45"]
 gl45 = []
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 glfw = { version = "0.54.0", default-features = false }
+paste = "1.0.14"
 
 [build-dependencies]
 gl_generator = "0.14.0"

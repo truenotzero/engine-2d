@@ -1,8 +1,10 @@
+use engine_2d::math::Vec2;
 use engine_2d::render;
 use engine_2d::render::shader;
 use engine_2d::render::shader::IShader;
 use engine_2d::render::shader::IShaderBuilder;
 use engine_2d::render::shader::ShaderBuilder;
+use engine_2d::vec;
 use glfw::Action;
 use glfw::Context;
 use glfw::Key;
@@ -50,6 +52,13 @@ fn wnd_setup() {
 }
 
 fn render() {
+    let vec2 = vec![1.0, 2.0];
+    let vec22 = vec![2.0, 3.0];
+
+    let mut vec222: Vec2 = vec2 + vec22;
+    println!("{}", vec222);
+    vec222 += vec2;
+    println!("{}", vec222);
     let vert_src = r#"
     #version 450 core
 

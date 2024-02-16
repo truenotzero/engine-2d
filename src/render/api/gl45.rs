@@ -161,3 +161,27 @@ impl Drop for Program {
         verify! { gl::DeleteProgram(self.0) };
     }
 }
+
+pub struct Texture(GLuint);
+
+impl Default for Texture {
+    fn default() -> Self {
+        let mut n = 0;
+        verify! { gl::GenTextures(1, &mut n) };
+        Self(n)
+    }
+}
+
+impl Deref for Texture {
+    type Target = GLuint;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Drop for Texture {
+    fn drop(&mut self) {
+        verify! { gl::DeleteTextures(1, &self.0) }
+    }
+}
