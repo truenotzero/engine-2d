@@ -1,7 +1,4 @@
+mod core;
+pub use self::core::*;
 
-pub mod shader;
-pub mod api;
-
-pub mod gl {
-    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-}
+pub mod render;
