@@ -1,5 +1,14 @@
+// export implementation
+pub use imp::*;
+
+pub trait IParameter<Shader: IShader> {
+    fn location(&self, shader: &Shader, name: &str) -> usize;
+
+    fn set(&self, location: usize);
+}
+
 pub trait IShader {
-    fn draw(&self);
+    fn set_parameter(&self, param_name: &str, param_val: &dyn IParameter<Self>);
 }
 
 #[derive(Clone, Copy)]
@@ -18,17 +27,60 @@ pub trait IShaderBuilder: Default {
 mod imp {
     use std::ptr::null_mut;
 
+    use super::IParameter;
     use super::IShader;
     use super::IShaderBuilder;
     use super::Part;
+    use crate::math::Mat3;
     use crate::render::api as gl;
     use crate::render::api::types::GLenum;
 
+    impl IParameter<Shader> for f32 {
+        fn location(&self, shader: &Shader, name: &str) -> usize {
+            let l = gl::verify! { gl::GetUniformLocation(*shader.0, name.as_bytes().as_ptr() as _) };
+            l as _
+        }
+
+        fn set(&self, location: usize) {
+            gl::verify! { gl::Uniform1f(location as _, *self) };
+        }
+    }
+
+    impl IParameter<Shader> for Mat3 {
+        fn location(&self, shader: &Shader, name: &str) -> usize {
+            let l = gl::verify! { gl::GetUniformLocation(*shader.0, name.as_bytes().as_ptr() as _) };
+            l as _
+        }
+
+        fn set(&self, location: usize) {
+            gl::verify! { gl::UniformMatrix3fv(location as _, 1, gl::FALSE, self.as_ptr()) };
+        }
+    }
+
+    impl IParameter<Shader> for i32 {
+        fn location(&self, shader: &Shader, name: &str) -> usize {
+            let l = gl::verify! { gl::GetUniformLocation(*shader.0, name.as_bytes().as_ptr() as _) };
+            l as _
+        }
+
+        fn set(&self, location: usize) {
+            gl::verify! { gl::Uniform1i(location as _, *self) };
+        }
+    }
+
     pub struct Shader(gl::Program);
 
+    impl Shader {
+        pub(crate) fn bind(&self) {
+            gl::verify! { gl::UseProgram(*self.0) };
+        }
+    }
+
     impl IShader for Shader {
-        fn draw(&self) {
-            todo!()
+        fn set_parameter(&self, param_name: &str, param_val: &dyn IParameter<Self>) {
+            let l = param_val.location(self, param_name);
+            self.bind();
+            param_val.set(l);
         }
     }
 
@@ -58,7 +110,7 @@ mod imp {
                 gl::GetShaderiv(*shader, gl::COMPILE_STATUS, &mut status);
             }
 
-            if status == gl::FALSE.into() {
+            if status != gl::TRUE.into() {
                 let mut buf_len = 0;
                 gl::verify! { gl::GetShaderiv(*shader, gl::INFO_LOG_LENGTH, &mut buf_len) };
 
@@ -79,7 +131,7 @@ mod imp {
                 gl::GetProgramiv(*self.0, gl::LINK_STATUS, &mut status);
             }
 
-            if status == gl::FALSE.into() {
+            if status != gl::TRUE.into() {
                 let mut buf_len = 0;
                 gl::verify! { gl::GetProgramiv(*self.0, gl::INFO_LOG_LENGTH, &mut buf_len) };
 
@@ -94,4 +146,3 @@ mod imp {
     }
 }
 
-pub use imp::*;

@@ -1,10 +1,14 @@
-use engine_2d::math::Vec2;
+use std::path::Path;
+
 use engine_2d::render;
 use engine_2d::render::shader;
-use engine_2d::render::shader::IShader;
 use engine_2d::render::shader::IShaderBuilder;
+use engine_2d::render::shader::Shader;
 use engine_2d::render::shader::ShaderBuilder;
-use engine_2d::vec;
+use engine_2d::render::sprite::ISprite;
+use engine_2d::render::sprite::Sprite;
+use engine_2d::render::texture::ITexture;
+use engine_2d::render::texture::Texture;
 use glfw::Action;
 use glfw::Context;
 use glfw::Key;
@@ -33,6 +37,8 @@ fn wnd_setup() {
     // load opengl functions
     render::init(|s| wnd.get_proc_address(s) as _);
 
+    let mut renderer = Renderer::new();
+
     while !wnd.should_close() {
         glfw.poll_events();
 
@@ -45,54 +51,82 @@ fn wnd_setup() {
             }
         }
 
-        render();
+        renderer.render();
 
         wnd.swap_buffers();
     }
 }
 
-fn render() {
-    let vec2 = vec![1.0, 2.0];
-    let vec22 = vec![2.0, 3.0];
+struct Renderer {
+    shader: Shader,
+    sprite: Sprite,
+}
 
-    let mut vec222: Vec2 = vec2 + vec22;
-    println!("{}", vec222);
-    vec222 += vec2;
-    println!("{}", vec222);
-    let vert_src = r#"
-    #version 450 core
+impl Renderer {
+    fn new() -> Self {
+        let vert_src = r#"
+        #version 450 core
 
-    layout(location = 0)
-    in vec4 aPos;
+        uniform mat3 uSprite;
+        uniform mat3 uView; // no camera support yet
 
-    void main() {
-        gl_Position = aPos;
+        layout(location = 0)
+        in vec2 aPos;
+
+        layout(location = 1)
+        in vec2 aUV;
+
+        out vec2 texUV;
+
+        void main() {
+            texUV = aUV;
+
+            gl_Position = vec4(uView * uSprite * vec3(aPos, 1.0), 1.0);
+            gl_Position = vec4(uSprite * vec3(aPos, 1.0), 1.0);
+        }
+        "#;
+
+        let frag_src = r#"
+        #version 450 core
+
+        uniform sampler2D uTexture;
+
+        in vec2 texUV;
+
+        out vec4 FragColor;
+
+        void main() {
+            FragColor = texture(uTexture, texUV);
+        }
+        "#;
+
+        let shader = ShaderBuilder::default()
+            .add_part(shader::Part::Vertex, vert_src)
+            .unwrap()
+            .add_part(shader::Part::Fragment, frag_src)
+            .unwrap()
+            .verify()
+            .unwrap();
+
+        let mut sprite = Sprite::default();
+        sprite.init();
+        sprite.set_scale((0.1, 0.1).into());
+        sprite.set_rotation(90.0);
+        sprite.set_position((0.5, 0.5).into());
+        sprite.set_texture(Texture::from_file(Path::new("deer.png")).unwrap());
+
+        Self {
+            shader,
+            sprite,
+        }
     }
-    "#;
 
-    let frag_src = r#"
-    #version 450 core
-
-    out vec4 FragColor;
-
-    void main() {
-        FragColor = vec4(1.0f);
+    fn render(&mut self) {
+        render::clear();
+        self.sprite.draw(&self.shader);
     }
-    "#;
-
-    let shader = ShaderBuilder::default()
-        .add_part(shader::Part::Vertex, vert_src)
-        .unwrap()
-        .add_part(shader::Part::Fragment, frag_src)
-        .unwrap()
-        .verify()
-        .unwrap();
-
-    shader.draw();
 }
 
 fn main() {
-    println!("Hello, world!");
-
     wnd_setup();
 }

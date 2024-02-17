@@ -27,16 +27,16 @@ macro_rules! verify {
     () => {};
     ( $( $call:expr $(;)* )+ ) => {
         $({
-            let e = unsafe { $call };
-            $crate::render::api::call_impl(file!(), line!()).unwrap();
-            e
+            let _e = unsafe { $call };
+            $crate::render::api::verify_impl(file!(), line!(), stringify!($call)).unwrap();
+            _e
         });+
     };
 }
 
 pub(crate) use verify;
 
-pub fn call_impl(file: &'static str, line: u32) -> Result<(), &'static str> {
+pub fn verify_impl(file: &str, line: u32, call: &str) -> Result<(), &'static str> {
     let mut has_err = false;
     let mut err_str = "No error!";
     loop {
@@ -53,7 +53,7 @@ pub fn call_impl(file: &'static str, line: u32) -> Result<(), &'static str> {
             _ => "Bad value from glGetError()",
         };
         has_err = true;
-        println!("[{file}:{line}] {err_str}");
+        println!("[{file}:{line}] {call}");
     }
 
     if !has_err {
@@ -66,6 +66,14 @@ pub fn call_impl(file: &'static str, line: u32) -> Result<(), &'static str> {
 //
 pub fn init(f: impl FnMut(&'static str) -> *const c_void) {
     gl::load_with(f)
+}
+
+pub fn clear() {
+    verify! {
+        // set by default to this value anyway
+        // gl::ClearColor(0.0, 0.0, 0.0, 0.0);
+        gl::Clear(gl::COLOR_BUFFER_BIT);
+    }
 }
 
 pub struct Vao(GLuint);
