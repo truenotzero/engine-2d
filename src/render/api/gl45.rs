@@ -65,7 +65,8 @@ pub fn verify_impl(file: &str, line: u32, call: &str) -> Result<(), &'static str
 
 //
 pub fn init(f: impl FnMut(&'static str) -> *const c_void) {
-    gl::load_with(f)
+    gl::load_with(f);
+    verify! { gl::Enable(gl::FRAMEBUFFER_SRGB) };
 }
 
 pub fn clear() {

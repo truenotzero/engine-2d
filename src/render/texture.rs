@@ -80,7 +80,7 @@ mod imp {
                 gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as _);
                 gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as _);
                 gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as _);
-                gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGB as _, size.x as _, size.y as _, 0, gl::RGBA, gl::UNSIGNED_BYTE, pixel_data);
+                gl::TexImage2D(gl::TEXTURE_2D, 0, gl::SRGB_ALPHA as _, size.x as _, size.y as _, 0, gl::RGBA, gl::UNSIGNED_BYTE, pixel_data);
             }
 
             Self {
