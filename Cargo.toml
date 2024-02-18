@@ -5,8 +5,9 @@ edition = "2021"
 build = "build.rs"
 
 [features]
-default = ["gl45"]
+default = ["gl45", "glfw"]
 gl45 = []
+glfw = []
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
