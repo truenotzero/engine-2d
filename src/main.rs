@@ -9,11 +9,9 @@ use engine_2d::render::sprite::ISprite;
 use engine_2d::render::sprite::Sprite;
 use engine_2d::render::texture::ITexture;
 use engine_2d::render::texture::Texture;
-use glfw::Action;
+use engine_2d::render::window::Action;
 use glfw::Context;
 use glfw::Key;
-
-extern crate glfw;
 
 fn wnd_setup() {
     let mut glfw = glfw::init(glfw::fail_on_errors).unwrap();
