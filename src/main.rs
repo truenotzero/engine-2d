@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use engine_2d::math::Mat3;
 use engine_2d::render;
 use engine_2d::render::shader;
 use engine_2d::render::shader::IShaderBuilder;
@@ -99,18 +100,17 @@ impl Renderer {
         "#;
 
         let shader = ShaderBuilder::default()
-            .add_part(shader::Part::Vertex, vert_src)
-            .unwrap()
-            .add_part(shader::Part::Fragment, frag_src)
-            .unwrap()
+            // .add_part(shader::PartType::Vertex, vert_src)
+            // .unwrap()
+            // .add_part(shader::PartType::Fragment, frag_src)
+            // .unwrap()
             .verify()
             .unwrap();
 
         let mut sprite = Sprite::default();
-        sprite.init();
-        sprite.set_scale((0.1, 0.1).into());
-        sprite.set_rotation(90.0);
-        sprite.set_position((0.5, 0.5).into());
+        // sprite.set_scale((0.1, 0.1).into());
+        // sprite.set_rotation(90.0);
+        // sprite.set_position((0.5, 0.5).into());
         sprite.set_texture(Texture::from_file(Path::new("deer.png")).unwrap());
 
         Self {
@@ -121,7 +121,7 @@ impl Renderer {
 
     fn render(&mut self) {
         render::clear();
-        self.sprite.draw(&self.shader);
+        self.sprite.draw(&self.shader, Mat3::identity());
     }
 }
 

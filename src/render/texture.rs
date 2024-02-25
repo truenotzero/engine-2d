@@ -8,6 +8,8 @@ use image::GenericImageView;
 // export implementation
 pub use imp::*;
 
+use super::Context;
+
 
 #[derive(Clone, Copy)]
 pub enum Filtering {
@@ -15,26 +17,19 @@ pub enum Filtering {
     Nearest,
 }
 
-pub trait ITexture{
-    fn from_file(path: &Path) -> Result<Self, ()> where Self: Sized {
+pub trait ITexture<'a> {
+    fn from_file<'c:'a> (ctx: Context<'c>, path: &Path) -> Result<Self, ()> where Self: Sized {
         let img = image::open(path).map_err(|_| ())?;
         let img = img.flipv();
         let size = img.dimensions().into();
         let pixel_data = img.as_bytes().as_ptr();
 
-        Ok(Self::from_memory(size, pixel_data as _))
+        Ok(Self::from_memory(ctx, size, pixel_data as _))
     }
 
-    fn from_memory(size: UVec2, pixel_data: *const c_void) -> Self;
+    fn from_memory<'c: 'a>(ctx: Context<'c>, size: UVec2, pixel_data: *const c_void) -> Self;
     fn set_filtering(&mut self, option: Filtering);
     fn size(&self) -> UVec2;
-}
-
-pub trait ITextureBuilder: Default {
-    type Out: ITexture;
-
-    fn path(self, path: &Path) -> Result<Self, ()>;
-    fn build(self) -> Result<Self::Out, ()>;
 }
 
 #[cfg(feature = "gl45")]
@@ -44,6 +39,7 @@ mod imp {
     use crate::math::UVec2;
     use crate::render::api::types::GLenum;
     use crate::render::api as gl;
+    use crate::render::Context;
 
     use super::Filtering;
     use super::ITexture;
@@ -57,25 +53,25 @@ mod imp {
         }
     }
 
-    pub struct Texture {
-        o: gl::Texture,
+    pub struct Texture<'a> {
+        o: gl::Texture<'a>,
         size: UVec2,
     }
 
-    impl Texture {
+    impl<'a> Texture<'a> {
         pub(crate) fn bind(&self, slot: u32) {
             gl::verify! { 
                 gl::ActiveTexture(gl::TEXTURE0 + slot);
-                gl::BindTexture(gl::TEXTURE_2D, *self.o);
+                gl::BindTexture(gl::TEXTURE_2D, self.o.0);
             }
         }
     }
 
-    impl ITexture for Texture {
-        fn from_memory(size: UVec2, pixel_data: *const c_void) -> Self {
-            let o = gl::Texture::default();
+    impl<'a> ITexture<'a> for Texture<'a> {
+        fn from_memory<'c: 'a>(ctx: Context<'c>, size: UVec2, pixel_data: *const c_void) -> Self {
+            let o = gl::Texture::new(ctx);
             gl::verify! {
-                gl::BindTexture(gl::TEXTURE_2D, *o);
+                gl::BindTexture(gl::TEXTURE_2D, o.0);
                 gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as _);
                 gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as _);
                 gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as _);
@@ -91,7 +87,7 @@ mod imp {
 
         fn set_filtering(&mut self, option: super::Filtering) {
             gl::verify! {
-                gl::BindTexture(gl::TEXTURE_RECTANGLE, *self.o);
+                gl::BindTexture(gl::TEXTURE_RECTANGLE, self.o.0);
                 gl::TexParameteri(gl::TEXTURE_RECTANGLE, gl::TEXTURE_MIN_FILTER, option.api() as _)
             }
         }

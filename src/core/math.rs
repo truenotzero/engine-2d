@@ -36,13 +36,35 @@ macro_rules! make_vec {
     // Casting from the relevant array & tuple type
     // Pretty printing
     // Component wise operations (addition, multiplication)
-    (let $($c:ident),+ <- $name:ident type $type_:ty) => {
+    (let $($c:ident),+ <- $name:ident type $type_:tt) => {
         #[derive(Debug, Default, Clone, Copy)]
         pub struct $name {
         $(
             pub $c: $type_,
         )+
         }
+
+        impl $name {
+            pub fn new( $( $c: $type_),+ ) -> Self {
+                Self {
+                    $( $c ),+
+                }
+            }
+
+            pub fn len2(self) -> $type_ {
+                let mut ret = 0 as $type_;
+                $( ret += self.$c * self.$c; )+
+                ret
+            }
+
+            pub fn dot(self, rhs: Self) -> $type_ {
+                let mut ret = 0 as $type_;
+                $( ret += self.$c * rhs.$c; )+
+                ret
+            }
+        }
+
+        make_vec!(fimpl: $name; $type_; $($c),+);
 
         // inside this paste! {} macro
         // all identifiers within [< >] are concatenated
@@ -160,7 +182,66 @@ macro_rules! make_vec {
                 *self = *self * other;
             }
         }
+
+        impl std::ops::Mul<$name> for $type_ {
+            type Output = $name;
+
+            fn mul(self, other: $name) -> $name {
+                $name {
+                $(
+                    $c: self * other.$c,
+                )+
+                }
+            }
+        }
+
+        impl std::ops::Sub for $name {
+            type Output = Self;
+
+            fn sub(self, other: Self) -> Self {
+                Self {
+                $(
+                    $c: self.$c - other.$c,
+                )+
+                }
+            }
+        }
+
+        impl std::ops::SubAssign for $name {
+            fn sub_assign(&mut self, other: Self) {
+                *self = *self - other;
+            }
+        }
     };
+
+    (fimpl: $name:ident; f32; $($c:ident),+) =>  (make_vec!(fgenerate: $name; f32; $($c),+); );
+    (fimpl: $name:ident; f64; $($c:ident),+) => (make_vec!(fgenerate: $name; f64; $($c),+); );
+    (fgenerate: $name:ident; $type_:ty; $($c:ident),+) => {
+        impl $name {
+            pub fn is_zero(self) -> bool {
+                let l = self.len2();
+                const E: $type_ = 0.001;
+                (-E..E).contains(&l)
+            }
+
+            pub fn is_unit(self) -> bool {
+                let l = self.len2() - 1.0;
+                const E: $type_ = 0.001;
+                (-E..E).contains(&l)
+            }
+
+            pub fn len(self) -> $type_ {
+                self.len2().sqrt()
+            }
+
+            pub fn normalize(self) -> Self {
+                if self.is_zero() { return Self::default(); }
+                let l = 1.0 / self.len();
+                l * self
+            }
+        }
+    };
+    (fimpl: $name:ident; $type_:ty; $($c:ident),+) => ();
 }
 
 make_vec!(let x,y     <- Vec2 type f32);
@@ -178,6 +259,16 @@ make_vec!(let x,y,z,w <- IVec4 type i32);
 make_vec!(let x,y     <- UVec2 type u32);
 make_vec!(let x,y,z   <- UVec3 type u32);
 make_vec!(let x,y,z,w <- UVec4 type u32);
+
+impl Vec2 {
+    // gets the angle in degrees to the up vector
+    // note that the angle is in the range (-180,180)
+    pub fn angle(self) -> f32 {
+        let up = Vec2::new(0.0, 1.0);
+        // a.b = |a|*|b|*cos(th)
+        self.dot(up).acos().to_degrees()
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct Mat3([f32;9]);

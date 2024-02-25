@@ -1,6 +1,18 @@
 // export implementation
 pub use imp::*;
 
+use super::Context;
+
+#[macro_export]
+macro_rules! shader {
+    (#type $shader_type:ident $code:literal) => {
+        ShaderPart {
+            type_: PartType::$shader_type,
+            source_code: $code,
+        }
+    }
+}
+
 pub trait IParameter<Shader: IShader> {
     fn location(&self, shader: &Shader, name: &str) -> usize;
 
@@ -12,14 +24,20 @@ pub trait IShader {
 }
 
 #[derive(Clone, Copy)]
-pub enum Part {
+pub enum PartType {
     Vertex,
     Fragment,
 }
 
-pub trait IShaderBuilder: Default {
+pub struct ShaderPart<'s> {
+    pub type_: PartType,
+    pub source_code: &'s str
+}
+
+pub trait IShaderBuilder<'a>: Sized {
     type Out: IShader;
-    fn add_part(self, part: Part, source_code: &str) -> Result<Self, String>;
+    fn new<'c: 'a>(ctx: Context<'c>) -> Self;
+    fn add_part<'s>(self, part: ShaderPart<'s>) -> Result<Self, String>;
     fn verify(self) -> Result<Self::Out, String>;
 }
 
@@ -30,14 +48,16 @@ mod imp {
     use super::IParameter;
     use super::IShader;
     use super::IShaderBuilder;
-    use super::Part;
+    use super::PartType;
+    use super::ShaderPart;
     use crate::math::Mat3;
     use crate::render::api as gl;
     use crate::render::api::types::GLenum;
+    use crate::render::Context;
 
-    impl IParameter<Shader> for f32 {
+    impl<'a> IParameter<Shader<'a>> for f32 {
         fn location(&self, shader: &Shader, name: &str) -> usize {
-            let l = gl::verify! { gl::GetUniformLocation(*shader.0, name.as_bytes().as_ptr() as _) };
+            let l = gl::verify! { gl::GetUniformLocation(shader.0.0, name.as_bytes().as_ptr() as _) };
             l as _
         }
 
@@ -46,9 +66,9 @@ mod imp {
         }
     }
 
-    impl IParameter<Shader> for Mat3 {
+    impl<'a> IParameter<Shader<'a>> for Mat3 {
         fn location(&self, shader: &Shader, name: &str) -> usize {
-            let l = gl::verify! { gl::GetUniformLocation(*shader.0, name.as_bytes().as_ptr() as _) };
+            let l = gl::verify! { gl::GetUniformLocation(shader.0.0, name.as_bytes().as_ptr() as _) };
             l as _
         }
 
@@ -57,9 +77,9 @@ mod imp {
         }
     }
 
-    impl IParameter<Shader> for i32 {
+    impl<'a> IParameter<Shader<'a>> for i32 {
         fn location(&self, shader: &Shader, name: &str) -> usize {
-            let l = gl::verify! { gl::GetUniformLocation(*shader.0, name.as_bytes().as_ptr() as _) };
+            let l = gl::verify! { gl::GetUniformLocation(shader.0.0, name.as_bytes().as_ptr() as _) };
             l as _
         }
 
@@ -68,15 +88,15 @@ mod imp {
         }
     }
 
-    pub struct Shader(gl::Program);
+    pub struct Shader<'a>(gl::Program<'a>);
 
-    impl Shader {
+    impl<'a> Shader<'a> {
         pub(crate) fn bind(&self) {
-            gl::verify! { gl::UseProgram(*self.0) };
+            gl::verify! { gl::UseProgram(self.0.0) };
         }
     }
 
-    impl IShader for Shader {
+    impl<'a> IShader for Shader<'a> {
         fn set_parameter(&self, param_name: &str, param_val: &dyn IParameter<Self>) {
             let l = param_val.location(self, param_name);
             self.bind();
@@ -84,42 +104,53 @@ mod imp {
         }
     }
 
-    impl Part {
+    impl PartType {
         fn api(self) -> GLenum {
             match self {
-                Part::Vertex => gl::VERTEX_SHADER,
-                Part::Fragment => gl::FRAGMENT_SHADER,
+                PartType::Vertex => gl::VERTEX_SHADER,
+                PartType::Fragment => gl::FRAGMENT_SHADER,
             }
         }
     }
 
-    #[derive(Default)]
-    pub struct ShaderBuilder(gl::Program);
+    pub struct ShaderBuilder<'a> {
+        p: gl::Program<'a>,
+        ctx: Context<'a>,
+    }
 
-    impl IShaderBuilder for ShaderBuilder {
-        type Out = Shader;
+    impl<'a> IShaderBuilder<'a> for ShaderBuilder<'a> {
+        type Out = Shader<'a>;
+        fn new<'c: 'a>(ctx: Context<'c>) -> Self {
+            Self {
+                p: gl::Program::new(ctx), 
+                ctx,
+            }
+        }
 
-        fn add_part(self, type_: super::Part, source_code: &str) -> Result<Self, String> {
-            let shader = gl::Shader::new(type_.api());
+        fn add_part<'s>(self, shader_part: ShaderPart<'s>) -> Result<Self, String> {
+            let type_ = shader_part.type_;
+            let source_code = shader_part.source_code;
+
+            let shader = gl::Shader::new(type_.api(), self.ctx);
             let src = source_code.as_bytes().as_ptr() as _;
             let len = source_code.len() as _;
             let mut status = 0;
             gl::verify! {
-                gl::ShaderSource(*shader, 1, &src, &len);
-                gl::CompileShader(*shader);
-                gl::GetShaderiv(*shader, gl::COMPILE_STATUS, &mut status);
+                gl::ShaderSource(shader.0, 1, &src, &len);
+                gl::CompileShader(shader.0);
+                gl::GetShaderiv(shader.0, gl::COMPILE_STATUS, &mut status);
             }
 
             if status != gl::TRUE.into() {
                 let mut buf_len = 0;
-                gl::verify! { gl::GetShaderiv(*shader, gl::INFO_LOG_LENGTH, &mut buf_len) };
+                gl::verify! { gl::GetShaderiv(shader.0, gl::INFO_LOG_LENGTH, &mut buf_len) };
 
                 let mut buf = vec![0u8; buf_len as _];
-                gl::verify! { gl::GetShaderInfoLog(*shader, buf_len, null_mut(), buf.as_mut_ptr() as _) };
+                gl::verify! { gl::GetShaderInfoLog(shader.0, buf_len, null_mut(), buf.as_mut_ptr() as _) };
                 // CString -> String is safe
                 Err(String::from_utf8(buf).unwrap())
             } else {
-                gl::verify! { gl::AttachShader(*self.0, *shader) };
+                gl::verify! { gl::AttachShader(self.p.0, shader.0) };
                 Ok(self)
             }
         }
@@ -127,20 +158,20 @@ mod imp {
         fn verify(self) -> Result<Self::Out, String> {
             let mut status = 0;
             gl::verify! {
-                gl::LinkProgram(*self.0);
-                gl::GetProgramiv(*self.0, gl::LINK_STATUS, &mut status);
+                gl::LinkProgram(self.p.0);
+                gl::GetProgramiv(self.p.0, gl::LINK_STATUS, &mut status);
             }
 
             if status != gl::TRUE.into() {
                 let mut buf_len = 0;
-                gl::verify! { gl::GetProgramiv(*self.0, gl::INFO_LOG_LENGTH, &mut buf_len) };
+                gl::verify! { gl::GetProgramiv(self.p.0, gl::INFO_LOG_LENGTH, &mut buf_len) };
 
                 let mut buf = vec![0u8; buf_len as _];
-                gl::verify! { gl::GetProgramInfoLog(*self.0, buf_len, null_mut(), buf.as_mut_ptr() as _) };
+                gl::verify! { gl::GetProgramInfoLog(self.p.0, buf_len, null_mut(), buf.as_mut_ptr() as _) };
                 // CString -> String is safe
                 Err(String::from_utf8(buf).unwrap())
             } else {
-                Ok(Shader(self.0))
+                Ok(Shader(self.p))
             }
         }
     }

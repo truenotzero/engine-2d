@@ -1,5 +1,7 @@
 use std::ffi::c_void;
-use std::ops::Deref;
+use std::marker::PhantomData;
+
+use crate::render::Context;
 
 use self::gl::types::GLenum;
 use self::gl::types::GLuint;
@@ -53,7 +55,7 @@ pub fn verify_impl(file: &str, line: u32, call: &str) -> Result<(), &'static str
             _ => "Bad value from glGetError()",
         };
         has_err = true;
-        println!("[{file}:{line}] {call}");
+        println!("[{file}:{line}] {err_str} | {call}");
     }
 
     if !has_err {
@@ -64,9 +66,15 @@ pub fn verify_impl(file: &str, line: u32, call: &str) -> Result<(), &'static str
 }
 
 //
-pub fn init(f: impl FnMut(&'static str) -> *const c_void) {
+pub fn init<'w>(f: impl FnMut(&'static str) -> *const c_void) -> Context<'w> {
     gl::load_with(f);
-    verify! { gl::Enable(gl::FRAMEBUFFER_SRGB) };
+    verify! {
+        gl::Enable(gl::FRAMEBUFFER_SRGB);
+        gl::Enable(gl::BLEND);
+        gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+    }
+
+    Context(PhantomData)
 }
 
 pub fn clear() {
@@ -77,119 +85,79 @@ pub fn clear() {
     }
 }
 
-pub struct Vao(GLuint);
+pub struct Vao<'a>(pub GLuint, PhantomData<&'a ()>);
 
-impl Default for Vao {
-    fn default() -> Self {
+impl<'a> Vao<'a> {
+    pub fn new<'c: 'a>(_: Context<'c>) -> Self {
         let mut n = 0;
         verify! { gl::CreateVertexArrays(1, &mut n) };
-        Self(n)
+        Self(n, PhantomData)
     }
 }
 
-impl Deref for Vao {
-    type Target = GLuint;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl Drop for Vao {
+impl<'a> Drop for Vao<'a> {
     fn drop(&mut self) {
         verify! { gl::DeleteVertexArrays(1, &self.0) };
     }
 }
 
-pub struct Buf(GLuint);
+pub struct Buf<'a>(pub GLuint, PhantomData<&'a ()>);
 
-impl Default for Buf {
-    fn default() -> Self {
+impl<'a> Buf<'a> {
+    pub fn new<'c: 'a>(_: Context<'c>) -> Self {
         let mut n = 0;
         verify! { gl::CreateBuffers(1, &mut n) };
-        Self(n)
+        Self(n, PhantomData)
     }
 }
 
-impl Deref for Buf {
-    type Target = GLuint;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl Drop for Buf {
+impl<'a> Drop for Buf<'a> {
     fn drop(&mut self) {
         verify! { gl::DeleteBuffers(1, &self.0) };
     }
 }
 
-pub struct Shader(GLuint);
+pub struct Shader<'a>(pub GLuint, PhantomData<&'a ()>);
 
-impl Shader {
-    pub fn new(type_: GLenum) -> Self {
+impl<'a> Shader<'a> {
+    pub fn new<'c :'a>(type_: GLenum, _: Context<'c>) -> Self {
         let n = verify! { gl::CreateShader(type_)};
-        Self(n)
+        Self(n, PhantomData)
     }
 }
 
-impl Deref for Shader {
-    type Target = GLuint;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl Drop for Shader {
+impl<'a> Drop for Shader<'a> {
     fn drop(&mut self) {
         verify! { gl::DeleteShader(self.0) };
     }
 }
 
-pub struct Program(GLuint);
+pub struct Program<'a>(pub GLuint, PhantomData<&'a ()>);
 
-impl Default for Program {
-    fn default() -> Self {
-        let n = verify! { gl::CreateProgram()};
-        Self(n)
+impl<'a> Program<'a> {
+    pub fn new<'c: 'a>(_: Context<'c>) -> Self {
+        let n = verify! { gl::CreateProgram() };
+        Self(n, PhantomData)
     }
 }
 
-impl Deref for Program {
-    type Target = GLuint;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl Drop for Program {
+impl<'a> Drop for Program<'a> {
     fn drop(&mut self) {
         verify! { gl::DeleteProgram(self.0) };
     }
 }
 
-pub struct Texture(GLuint);
+pub struct Texture<'a>(pub GLuint, PhantomData<&'a ()>);
 
-impl Default for Texture {
-    fn default() -> Self {
+impl<'a> Texture<'a> {
+    pub fn new<'c>(_: Context<'c>) -> Self {
         let mut n = 0;
         verify! { gl::GenTextures(1, &mut n) };
-        Self(n)
+        Self(n, PhantomData)
     }
 }
 
-impl Deref for Texture {
-    type Target = GLuint;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl Drop for Texture {
+impl<'a> Drop for Texture<'a> {
     fn drop(&mut self) {
         verify! { gl::DeleteTextures(1, &self.0) }
     }
