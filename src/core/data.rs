@@ -1,4 +1,3 @@
-
 pub type QuadTree<T> = Option<Box<QuadTreeNode<T>>>;
 
 pub enum QuadTreeNode<T> {
@@ -10,4 +9,3 @@ pub enum QuadTreeNode<T> {
         bottom_right: QuadTree<T>,
     },
 }
-

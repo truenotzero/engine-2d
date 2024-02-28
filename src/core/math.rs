@@ -19,14 +19,24 @@ macro_rules! vec {
 }
 
 macro_rules! repeat {
-    ($repetition_token:tt, $what:tt) => ($what);
+    ($repetition_token:tt, $what:tt) => {
+        $what
+    };
 }
 
 macro_rules! index {
-    (x) => (0);
-    (y) => (1);
-    (z) => (2);
-    (w) => (3);
+    (x) => {
+        0
+    };
+    (y) => {
+        1
+    };
+    (z) => {
+        2
+    };
+    (w) => {
+        3
+    };
 }
 
 macro_rules! make_vec {
@@ -271,31 +281,19 @@ impl Vec2 {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Mat3([f32;9]);
+pub struct Mat3([f32; 9]);
 
 impl Mat3 {
     pub fn identity() -> Self {
-        Self([
-            1.0, 0.0, 0.0,
-            0.0, 1.0, 0.0,
-            0.0, 0.0, 1.0,
-        ])
+        Self([1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])
     }
 
     pub fn scale(scale: Vec2) -> Self {
-        Self([
-            scale.x,    0.0,        0.0,
-            0.0,        scale.y,    0.0,
-            0.0,        0.0,        1.0,
-        ])
+        Self([scale.x, 0.0, 0.0, 0.0, scale.y, 0.0, 0.0, 0.0, 1.0])
     }
 
     pub fn translate(translate: Vec2) -> Self {
-        Self([
-            1.0,            0.0,            0.0,
-            0.0,            1.0,            0.0,
-            translate.x,    translate.y,    1.0,
-        ])
+        Self([1.0, 0.0, 0.0, 0.0, 1.0, 0.0, translate.x, translate.y, 1.0])
     }
 
     pub fn rotate(angle: f32) -> Self {
@@ -303,11 +301,7 @@ impl Mat3 {
         let sin = angle.sin();
         let cos = angle.cos();
 
-        Self([
-            cos, -sin, 0.0,
-            sin,  cos, 0.0,
-            0.0,  0.0, 1.0,
-        ])
+        Self([cos, -sin, 0.0, sin, cos, 0.0, 0.0, 0.0, 1.0])
     }
 
     pub fn as_ptr(&self) -> *const f32 {
@@ -323,14 +317,14 @@ impl Default for Mat3 {
 
 impl Display for Mat3 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[ {:.2} {:.2} {:.2} ]\n", self.0[0], self.0[3], self.0[6])?;
-        write!(f, "[ {:.2} {:.2} {:.2} ]\n", self.0[1], self.0[4], self.0[7])?;
-        write!(f, "[ {:.2} {:.2} {:.2} ]"  , self.0[2], self.0[5], self.0[8])
+        writeln!(f, "[ {:.2} {:.2} {:.2} ]", self.0[0], self.0[3], self.0[6])?;
+        writeln!(f, "[ {:.2} {:.2} {:.2} ]", self.0[1], self.0[4], self.0[7])?;
+        write!(f, "[ {:.2} {:.2} {:.2} ]", self.0[2], self.0[5], self.0[8])
     }
 }
 
 impl Mul for Mat3 {
-    type Output=Mat3;
+    type Output = Mat3;
 
     fn mul(self, rhs: Self) -> Self::Output {
         const N: usize = 3;
@@ -351,7 +345,7 @@ impl Mul for Mat3 {
 }
 
 impl Mul<Vec3> for Mat3 {
-    type Output=Vec3;
+    type Output = Vec3;
 
     fn mul(self, rhs: Vec3) -> Self::Output {
         const N: usize = 3;

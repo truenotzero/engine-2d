@@ -2,16 +2,11 @@
 // call `render::init`
 // each API has a specific requirement, so check each api's `init`  documentation
 
-pub(self) mod api;
-pub use api::init;
+mod api;
 pub use api::clear;
-pub use api::window;
+pub use api::init;
 
 pub mod shader;
 pub mod sprite;
 pub mod texture;
-
-// w is the lifetime of the canvas in which
-// the context will be created
-#[derive(Clone, Copy)]
-pub struct Context<'w>(std::marker::PhantomData<&'w ()>);
+pub mod window;

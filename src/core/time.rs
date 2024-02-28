@@ -1,5 +1,6 @@
 use std::time::{Duration, Instant};
 
+/// Calculates the time between ticks
 pub struct Ticker(Instant);
 
 impl Default for Ticker {
@@ -13,7 +14,7 @@ impl Ticker {
         Self(Instant::now())
     }
 
-    pub fn dt(&mut self) -> Duration {
+    pub fn tick(&mut self) -> Duration {
         let now = Instant::now();
         let dt = now - self.0;
         self.0 = now;
@@ -25,16 +26,17 @@ pub trait Tickable {
     fn tick(&mut self, dt: Duration);
 }
 
+/// Ticks at a regular interval
 pub struct Timer {
     accumulator: Duration,
-    threshold: Duration,
+    interval: Duration,
 }
 
 impl Timer {
-    pub fn new(threshold: Duration) -> Self {
+    pub fn new(interval: Duration) -> Self {
         Self {
             accumulator: Duration::ZERO,
-            threshold,
+            interval,
         }
     }
 
@@ -44,16 +46,17 @@ impl Timer {
 
     pub fn tick(&mut self, dt: Duration) -> bool {
         self.accumulator += dt;
-        let ret = self.accumulator >= self.threshold;
+        let ret = self.accumulator >= self.interval;
 
         if ret {
-            self.accumulator -= self.threshold;
+            self.accumulator -= self.interval;
         }
 
         ret
     }
 }
 
+/// Measures a cooldown
 pub struct Cooldown {
     accumulator: Duration,
     duration: Duration,
@@ -85,4 +88,3 @@ impl Cooldown {
         self.accumulator == Duration::ZERO
     }
 }
-

@@ -1,10 +1,9 @@
-
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::sync::mpsc::Sender;
-use std::sync::mpsc::Receiver;
-use std::sync::mpsc;
 use std::rc::Rc;
+use std::sync::mpsc;
+use std::sync::mpsc::Receiver;
+use std::sync::mpsc::Sender;
 
 #[derive(Default)]
 pub struct EventManager<E: Hash + Eq + Copy, D> {
@@ -25,7 +24,7 @@ impl<E: Hash + Eq + Copy, D> EventManager<E, D> {
     }
 
     pub fn make_notifier(&mut self, event: E) -> Sender<D> {
-        if let None = self.notifiers_tx.get(&event) {
+        if self.notifiers_tx.get(&event).is_none() {
             let (tx, rx) = mpsc::channel();
             self.notifiers_tx.insert(event, tx);
             self.notifiers_rx.insert(event, rx);
@@ -40,10 +39,10 @@ impl<E: Hash + Eq + Copy, D> EventManager<E, D> {
         for (event, notifier) in self.notifiers_rx.iter() {
             if let Ok(data) = notifier.try_recv() {
                 let data = Rc::new(data);
-                if let Some(subs) = self.subscribers.get(&event) {
+                if let Some(subs) = self.subscribers.get(event) {
                     for (idx, sub) in subs.iter().enumerate() {
-                        if let Err(_) = sub.send(data.clone()) {
-                            if let None = cleanup.get(&event) {
+                        if sub.send(data.clone()).is_err() {
+                            if cleanup.get(&event).is_none() {
                                 cleanup.insert(event, Vec::new());
                             }
                             cleanup.get_mut(&event).unwrap().push(idx);
@@ -56,9 +55,8 @@ impl<E: Hash + Eq + Copy, D> EventManager<E, D> {
         // do cleanup of dropped subscribers
         for (event, indices) in cleanup {
             for i in indices {
-                self.subscribers.get_mut(&event).unwrap().swap_remove(i);
+                self.subscribers.get_mut(event).unwrap().swap_remove(i);
             }
         }
     }
 }
-

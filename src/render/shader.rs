@@ -1,7 +1,7 @@
 // export implementation
 pub use imp::*;
 
-use super::Context;
+use crate::render::window::DrawContext as Context;
 
 #[macro_export]
 macro_rules! shader {
@@ -10,7 +10,7 @@ macro_rules! shader {
             type_: PartType::$shader_type,
             source_code: $code,
         }
-    }
+    };
 }
 
 pub trait IParameter<Shader: IShader> {
@@ -31,13 +31,13 @@ pub enum PartType {
 
 pub struct ShaderPart<'s> {
     pub type_: PartType,
-    pub source_code: &'s str
+    pub source_code: &'s str,
 }
 
-pub trait IShaderBuilder<'a>: Sized {
+pub trait IShaderBuilder<'c>: Sized {
     type Out: IShader;
-    fn new<'c: 'a>(ctx: Context<'c>) -> Self;
-    fn add_part<'s>(self, part: ShaderPart<'s>) -> Result<Self, String>;
+    fn new(ctx: &'c Context) -> Self;
+    fn add_part(self, part: ShaderPart<'_>) -> Result<Self, String>;
     fn verify(self) -> Result<Self::Out, String>;
 }
 
@@ -45,6 +45,7 @@ pub trait IShaderBuilder<'a>: Sized {
 mod imp {
     use std::ptr::null_mut;
 
+    use super::Context;
     use super::IParameter;
     use super::IShader;
     use super::IShaderBuilder;
@@ -53,11 +54,11 @@ mod imp {
     use crate::math::Mat3;
     use crate::render::api as gl;
     use crate::render::api::types::GLenum;
-    use crate::render::Context;
 
     impl<'a> IParameter<Shader<'a>> for f32 {
         fn location(&self, shader: &Shader, name: &str) -> usize {
-            let l = gl::verify! { gl::GetUniformLocation(shader.0.0, name.as_bytes().as_ptr() as _) };
+            let l =
+                gl::verify! { gl::GetUniformLocation(shader.0.0, name.as_bytes().as_ptr() as _) };
             l as _
         }
 
@@ -68,7 +69,8 @@ mod imp {
 
     impl<'a> IParameter<Shader<'a>> for Mat3 {
         fn location(&self, shader: &Shader, name: &str) -> usize {
-            let l = gl::verify! { gl::GetUniformLocation(shader.0.0, name.as_bytes().as_ptr() as _) };
+            let l =
+                gl::verify! { gl::GetUniformLocation(shader.0.0, name.as_bytes().as_ptr() as _) };
             l as _
         }
 
@@ -79,7 +81,8 @@ mod imp {
 
     impl<'a> IParameter<Shader<'a>> for i32 {
         fn location(&self, shader: &Shader, name: &str) -> usize {
-            let l = gl::verify! { gl::GetUniformLocation(shader.0.0, name.as_bytes().as_ptr() as _) };
+            let l =
+                gl::verify! { gl::GetUniformLocation(shader.0.0, name.as_bytes().as_ptr() as _) };
             l as _
         }
 
@@ -113,21 +116,21 @@ mod imp {
         }
     }
 
-    pub struct ShaderBuilder<'a> {
-        p: gl::Program<'a>,
-        ctx: Context<'a>,
+    pub struct ShaderBuilder<'c> {
+        p: gl::Program<'c>,
+        ctx: &'c Context,
     }
 
-    impl<'a> IShaderBuilder<'a> for ShaderBuilder<'a> {
-        type Out = Shader<'a>;
-        fn new<'c: 'a>(ctx: Context<'c>) -> Self {
+    impl<'c> IShaderBuilder<'c> for ShaderBuilder<'c> {
+        type Out = Shader<'c>;
+        fn new(ctx: &'c Context) -> Self {
             Self {
-                p: gl::Program::new(ctx), 
+                p: gl::Program::new(ctx),
                 ctx,
             }
         }
 
-        fn add_part<'s>(self, shader_part: ShaderPart<'s>) -> Result<Self, String> {
+        fn add_part(self, shader_part: ShaderPart<'_>) -> Result<Self, String> {
             let type_ = shader_part.type_;
             let source_code = shader_part.source_code;
 
@@ -176,4 +179,3 @@ mod imp {
         }
     }
 }
-

@@ -8,8 +8,7 @@ use image::GenericImageView;
 // export implementation
 pub use imp::*;
 
-use super::Context;
-
+use crate::render::window::DrawContext as Context;
 
 #[derive(Clone, Copy)]
 pub enum Filtering {
@@ -18,7 +17,11 @@ pub enum Filtering {
 }
 
 pub trait ITexture<'a> {
-    fn from_file<'c:'a> (ctx: Context<'c>, path: &Path) -> Result<Self, ()> where Self: Sized {
+    #[allow(clippy::result_unit_err)]
+    fn from_file<'c: 'a>(ctx: &'c Context, path: &Path) -> Result<Self, ()>
+    where
+        Self: Sized,
+    {
         let img = image::open(path).map_err(|_| ())?;
         let img = img.flipv();
         let size = img.dimensions().into();
@@ -27,7 +30,7 @@ pub trait ITexture<'a> {
         Ok(Self::from_memory(ctx, size, pixel_data as _))
     }
 
-    fn from_memory<'c: 'a>(ctx: Context<'c>, size: UVec2, pixel_data: *const c_void) -> Self;
+    fn from_memory<'c: 'a>(ctx: &'c Context, size: UVec2, pixel_data: *const c_void) -> Self;
     fn set_filtering(&mut self, option: Filtering);
     fn size(&self) -> UVec2;
 }
@@ -36,10 +39,10 @@ pub trait ITexture<'a> {
 mod imp {
     use std::ffi::c_void;
 
+    use super::Context;
     use crate::math::UVec2;
-    use crate::render::api::types::GLenum;
     use crate::render::api as gl;
-    use crate::render::Context;
+    use crate::render::api::types::GLenum;
 
     use super::Filtering;
     use super::ITexture;
@@ -60,7 +63,7 @@ mod imp {
 
     impl<'a> Texture<'a> {
         pub(crate) fn bind(&self, slot: u32) {
-            gl::verify! { 
+            gl::verify! {
                 gl::ActiveTexture(gl::TEXTURE0 + slot);
                 gl::BindTexture(gl::TEXTURE_2D, self.o.0);
             }
@@ -68,7 +71,8 @@ mod imp {
     }
 
     impl<'a> ITexture<'a> for Texture<'a> {
-        fn from_memory<'c: 'a>(ctx: Context<'c>, size: UVec2, pixel_data: *const c_void) -> Self {
+        #[allow(clippy::not_unsafe_ptr_arg_deref)]
+        fn from_memory<'c: 'a>(ctx: &'c Context, size: UVec2, pixel_data: *const c_void) -> Self {
             let o = gl::Texture::new(ctx);
             gl::verify! {
                 gl::BindTexture(gl::TEXTURE_2D, o.0);
@@ -79,10 +83,7 @@ mod imp {
                 gl::TexImage2D(gl::TEXTURE_2D, 0, gl::SRGB_ALPHA as _, size.x as _, size.y as _, 0, gl::RGBA, gl::UNSIGNED_BYTE, pixel_data);
             }
 
-            Self {
-                o,
-                size,
-            }
+            Self { o, size }
         }
 
         fn set_filtering(&mut self, option: super::Filtering) {

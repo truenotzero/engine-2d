@@ -1,13 +1,11 @@
 use std::ffi::c_void;
-use std::marker::PhantomData;
 
-use crate::render::Context;
+use crate::render::window::DrawContext as Context;
 
 use self::gl::types::GLenum;
 use self::gl::types::GLuint;
 
 // contains the raw OpenGL 4.5 bindings as well as RAII containers for OpenGL objects
-
 mod gl {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
@@ -66,15 +64,13 @@ pub fn verify_impl(file: &str, line: u32, call: &str) -> Result<(), &'static str
 }
 
 //
-pub fn init<'w>(f: impl FnMut(&'static str) -> *const c_void) -> Context<'w> {
+pub fn init(f: impl FnMut(&'static str) -> *const c_void) {
     gl::load_with(f);
     verify! {
         gl::Enable(gl::FRAMEBUFFER_SRGB);
         gl::Enable(gl::BLEND);
         gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
     }
-
-    Context(PhantomData)
 }
 
 pub fn clear() {
@@ -85,13 +81,14 @@ pub fn clear() {
     }
 }
 
-pub struct Vao<'a>(pub GLuint, PhantomData<&'a ()>);
+#[allow(dead_code)]
+pub struct Vao<'a>(pub GLuint, &'a Context);
 
 impl<'a> Vao<'a> {
-    pub fn new<'c: 'a>(_: Context<'c>) -> Self {
+    pub fn new(ctx: &'a Context) -> Self {
         let mut n = 0;
         verify! { gl::CreateVertexArrays(1, &mut n) };
-        Self(n, PhantomData)
+        Self(n, ctx)
     }
 }
 
@@ -101,13 +98,14 @@ impl<'a> Drop for Vao<'a> {
     }
 }
 
-pub struct Buf<'a>(pub GLuint, PhantomData<&'a ()>);
+#[allow(dead_code)]
+pub struct Buf<'a>(pub GLuint, &'a Context);
 
 impl<'a> Buf<'a> {
-    pub fn new<'c: 'a>(_: Context<'c>) -> Self {
+    pub fn new(ctx: &'a Context) -> Self {
         let mut n = 0;
         verify! { gl::CreateBuffers(1, &mut n) };
-        Self(n, PhantomData)
+        Self(n, ctx)
     }
 }
 
@@ -117,12 +115,13 @@ impl<'a> Drop for Buf<'a> {
     }
 }
 
-pub struct Shader<'a>(pub GLuint, PhantomData<&'a ()>);
+#[allow(dead_code)]
+pub struct Shader<'a>(pub GLuint, &'a Context);
 
 impl<'a> Shader<'a> {
-    pub fn new<'c :'a>(type_: GLenum, _: Context<'c>) -> Self {
+    pub fn new(type_: GLenum, ctx: &'a Context) -> Self {
         let n = verify! { gl::CreateShader(type_)};
-        Self(n, PhantomData)
+        Self(n, ctx)
     }
 }
 
@@ -132,12 +131,13 @@ impl<'a> Drop for Shader<'a> {
     }
 }
 
-pub struct Program<'a>(pub GLuint, PhantomData<&'a ()>);
+#[allow(dead_code)]
+pub struct Program<'a>(pub GLuint, &'a Context);
 
 impl<'a> Program<'a> {
-    pub fn new<'c: 'a>(_: Context<'c>) -> Self {
+    pub fn new(ctx: &'a Context) -> Self {
         let n = verify! { gl::CreateProgram() };
-        Self(n, PhantomData)
+        Self(n, ctx)
     }
 }
 
@@ -147,13 +147,14 @@ impl<'a> Drop for Program<'a> {
     }
 }
 
-pub struct Texture<'a>(pub GLuint, PhantomData<&'a ()>);
+#[allow(dead_code)]
+pub struct Texture<'a>(pub GLuint, &'a Context);
 
 impl<'a> Texture<'a> {
-    pub fn new<'c>(_: Context<'c>) -> Self {
+    pub fn new(ctx: &'a Context) -> Self {
         let mut n = 0;
         verify! { gl::GenTextures(1, &mut n) };
-        Self(n, PhantomData)
+        Self(n, ctx)
     }
 }
 
