@@ -2,7 +2,7 @@ use crate::math::Mat3;
 
 use super::shader::IShader;
 use super::texture::ITexture;
-use crate::render::window::DrawContext as Context;
+use crate::window::DrawContext as Context;
 
 // export implementation
 pub use imp::*;

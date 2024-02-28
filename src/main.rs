@@ -10,9 +10,10 @@ use engine_2d::render::sprite::ISprite;
 use engine_2d::render::sprite::Sprite;
 use engine_2d::render::texture::ITexture;
 use engine_2d::render::texture::Texture;
-use engine_2d::render::window::Engine;
-use engine_2d::render::window::GameLoop;
-use engine_2d::render::window::WindowManager;
+use engine_2d::window::DrawContext;
+use engine_2d::window::Engine;
+use engine_2d::window::GameLoop;
+use engine_2d::window::WindowManager;
 use glfw::Context;
 use glfw::Key;
 
@@ -130,7 +131,7 @@ struct GameLoopImpl<'a> {
 }
 
 impl<'a> GameLoop<'a> for GameLoopImpl<'a> {
-    fn setup(ctx: &'a render::window::DrawContext, _wm: &mut WindowManager) -> Self {
+    fn setup(ctx: &'a DrawContext, _wm: &mut WindowManager) -> Self {
         let vert_src = r#"
          #version 450 core
 
@@ -188,7 +189,7 @@ impl<'a> GameLoop<'a> for GameLoopImpl<'a> {
 
     fn tick(&mut self, dt: std::time::Duration, wm: &mut WindowManager) {}
 
-    fn draw(&mut self, ctx: &render::window::DrawContext, wm: &mut WindowManager) {
+    fn draw(&mut self, ctx: &DrawContext, wm: &mut WindowManager) {
         self.sprite.draw(&self.shader, Mat3::identity());
     }
 }

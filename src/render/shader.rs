@@ -1,7 +1,7 @@
 // export implementation
 pub use imp::*;
 
-use crate::render::window::DrawContext as Context;
+use crate::window::DrawContext as Context;
 
 #[macro_export]
 macro_rules! shader {

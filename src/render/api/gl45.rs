@@ -1,6 +1,6 @@
 use std::ffi::c_void;
 
-use crate::render::window::DrawContext as Context;
+use crate::window::DrawContext as Context;
 
 use self::gl::types::GLenum;
 use self::gl::types::GLuint;

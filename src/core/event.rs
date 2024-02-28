@@ -13,6 +13,14 @@ pub struct EventManager<E: Hash + Eq + Copy, D> {
 }
 
 impl<E: Hash + Eq + Copy, D> EventManager<E, D> {
+    pub fn new() -> Self {
+        Self {
+            subscribers: HashMap::new(),
+            notifiers_rx: HashMap::new(),
+            notifiers_tx: HashMap::new(),
+        }
+    }
+
     pub fn subscribe(&mut self, event: E) -> Receiver<Rc<D>> {
         let (tx, rx) = mpsc::channel();
 

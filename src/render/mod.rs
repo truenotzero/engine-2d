@@ -9,4 +9,3 @@ pub use api::init;
 pub mod shader;
 pub mod sprite;
 pub mod texture;
-pub mod window;

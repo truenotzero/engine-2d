@@ -2,11 +2,11 @@ use std::time::Duration;
 
 use glfw::Context;
 
-use crate::time::Ticker;
-
-use super::init;
+use crate::{event::EventManager, time::Ticker};
 
 pub struct DrawContext(());
+
+pub use glfw::Key;
 
 pub struct WindowManager {
     window: glfw::PWindow,
@@ -32,13 +32,17 @@ impl WindowManager {
 
     pub fn make_draw_context(&mut self) -> DrawContext {
         self.window.make_current();
-        init(|procstr| self.window.get_proc_address(procstr));
+        crate::render::init(|procstr| self.window.get_proc_address(procstr));
 
         DrawContext(())
     }
 
     pub fn show(&mut self) {
         self.window.show();
+    }
+
+    pub fn close(&mut self) {
+        self.window.set_should_close(true)
     }
 }
 
@@ -49,6 +53,7 @@ pub trait GameLoop<'c> {
 }
 
 pub struct Engine {
+    key_events: EventManager<Key, bool>,
     ctx: DrawContext,
     window_manager: WindowManager,
 }
@@ -58,12 +63,15 @@ impl Engine {
         let ctx = window_manager.make_draw_context();
 
         Self {
+            key_events: EventManager::new(),
             ctx,
             window_manager,
         }
     }
 
     pub fn run<'g, G: GameLoop<'g>>(&'g mut self) {
+        let on_esc = self.key_events.subscribe(Key::Escape);
+
         let mut game_loop = G::setup(&self.ctx, &mut self.window_manager);
         self.window_manager.show();
 
@@ -71,9 +79,20 @@ impl Engine {
         while !self.window_manager.window.should_close() {
             self.window_manager.glfw.poll_events();
             for (_, e) in glfw::flush_messages(&self.window_manager.event_pump) {
-                if let glfw::WindowEvent::Key(glfw::Key::Escape, _, glfw::Action::Press, _) = e {
-                    self.window_manager.window.set_should_close(true);
+                match e {
+                    glfw::WindowEvent::Key(k, _, glfw::Action::Press, _) => {
+                        self.key_events.make_notifier(k).send(true).unwrap();
+                    }
+                    glfw::WindowEvent::Key(k, _, glfw::Action::Release, _) => {
+                        self.key_events.make_notifier(k).send(false).unwrap();
+                    }
+                    _ => (),
                 }
+            }
+            self.key_events.tick();
+
+            if on_esc.try_recv().is_ok() {
+                self.window_manager.close();
             }
 
             let dt = delta_time.tick();

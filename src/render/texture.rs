@@ -8,7 +8,7 @@ use image::GenericImageView;
 // export implementation
 pub use imp::*;
 
-use crate::render::window::DrawContext as Context;
+use crate::window::DrawContext as Context;
 
 #[derive(Clone, Copy)]
 pub enum Filtering {
